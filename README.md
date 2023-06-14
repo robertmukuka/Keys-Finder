@@ -15,7 +15,7 @@ Run the following command to install the required dependencies:
 
 npm install
 
-###Usage
+### Usage
 
 Once you have installed the dependencies, you can run Keys-Finder by executing the following command:
 
