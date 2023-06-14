@@ -1,0 +1,12 @@
+{
+  "name": "keys-finder",
+  "version": "1.0.0",
+  "description": "Keys-Finder is a command-line tool for scanning and identifying private keys, mnemonic seed phrases, and Stellar secret keys in files. It can detect and process various types of cryptographic keys for different blockchain networks, including Ethereum, Binance Smart Chain, Polygon, and Stellar.",
+  "main": "keys-finder.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "robintomukuka",
+  "license": "ISC"
+}
