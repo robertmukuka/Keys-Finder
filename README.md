@@ -52,7 +52,5 @@ For any inquiries or questions regarding Keys-Finder, you can reach out to the p
 If you like this tool, please feel free to make contributions!
 
 Stellar: GB46JMLXQ6JN5637WOLLY5KWWJ2YRPUULVW6GY45YDNLFLAQ5QI4UCFC
+
 Eth/BNB/Polygon: 0x23E41e63Eb5d29aC76713a506F374AeF1Feb6eBD
-TRON: TKKuG3sHjnXbP8L38dRpTvSDTvTaqfFqxy
-BTC: bc1qs0udrsrgn2q3cj4edqdkndg2gq4t3l2p43f8tg
-LTC: Le5Xs43GpVAvLQ5TxBM7zHFsxwufRHWUJv
